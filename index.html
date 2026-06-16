@@ -19,42 +19,45 @@ body { font-family: Arial; margin: 20px; }
 
 <body>
 
-<h1>Decision Dashboard</h1>
+<h1>Inbox → Decision Dashboard</h1>
+
+<p>
+This system transforms unstructured communication into structured, prioritized tasks
+to reduce business risk and improve execution predictability.
+</p>
 
 <div class="section">
-<h2>Фильтр аналитики</h2>
+<h2>Analytics View</h2>
 <div class="controls">
-<button onclick="updateChart('priority')">По приоритету</button>
-<button onclick="updateChart('owner')">По исполнителю</button>
-<button onclick="updateChart('deadline')">По сроку</button>
+<button onclick="updateChart('priority')">By Priority</button>
+<button onclick="updateChart('owner')">By Owner</button>
+<button onclick="updateChart('deadline')">By Deadline</button>
 </div>
 </div>
 
 <div class="section">
-<h2>Задачи</h2>
+<h2>Tasks</h2>
 <div id="tasks"></div>
 </div>
 
 <div class="section">
-<h2>Аналитика</h2>
+<h2>Analytics</h2>
 <canvas id="chart"></canvas>
 </div>
 
 <script>
 
-// === ДАННЫЕ (результат системы) ===
 const tasks = [
-{title:"Чек не отправляется", priority:"HIGH", owner:"Backend", deadline:"Today"},
-{title:"Кейсы на лендинг", priority:"MEDIUM", owner:"Frontend", deadline:"15 May"},
-{title:"Онбординг", priority:"MEDIUM", owner:"Product", deadline:"This week"},
-{title:"Safari баг", priority:"HIGH", owner:"Frontend", deadline:"ASAP"},
-{title:"NPS", priority:"LOW", owner:"Backend", deadline:"Next sprint"},
-{title:"CSV экспорт", priority:"HIGH", owner:"Backend", deadline:"Friday"},
-{title:"Weekly template", priority:"MEDIUM", owner:"Operations", deadline:"Next week"},
-{title:"Оферта", priority:"HIGH", owner:"Legal", deadline:"Before release"}
+{title:"Fix payment receipt issue", priority:"HIGH", owner:"Backend", deadline:"Today"},
+{title:"Add cases to landing page", priority:"MEDIUM", owner:"Frontend", deadline:"May 15"},
+{title:"Create onboarding guide", priority:"MEDIUM", owner:"Product", deadline:"This week"},
+{title:"Fix Safari payment bug", priority:"HIGH", owner:"Frontend", deadline:"ASAP"},
+{title:"Implement NPS", priority:"LOW", owner:"Backend", deadline:"Next sprint"},
+{title:"Build CSV export", priority:"HIGH", owner:"Backend", deadline:"Friday"},
+{title:"Create weekly template", priority:"MEDIUM", owner:"Operations", deadline:"Next week"},
+{title:"Update legal offer", priority:"HIGH", owner:"Legal", deadline:"Before release"}
 ];
 
-// === РЕНДЕР ЗАДАЧ ===
 const container = document.getElementById("tasks");
 
 tasks.forEach(t => {
@@ -69,7 +72,6 @@ tasks.forEach(t => {
   container.appendChild(div);
 });
 
-// === CHART ===
 let chart;
 
 function groupBy(field) {
@@ -94,14 +96,13 @@ function updateChart(field) {
     data: {
       labels: labels,
       datasets: [{
-        label: "Количество задач",
+        label: "Tasks",
         data: values
       }]
     }
   });
 }
 
-// === INIT ===
 updateChart('priority');
 
 </script>
