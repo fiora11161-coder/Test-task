@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Task Decision Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { font-family: Arial; margin: 20px; }
+.section { margin-bottom: 30px; }
+.card { border:1px solid #ddd; padding:10px; margin:10px 0; }
+.controls button {
+  margin-right:10px;
+  padding:8px 12px;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Decision Dashboard</h1>
+
+<div class="section">
+<h2>Фильтр аналитики</h2>
+<div class="controls">
+<button onclick="updateChart('priority')">По приоритету</button>
+<button onclick="updateChart('owner')">По исполнителю</button>
+<button onclick="updateChart('deadline')">По сроку</button>
+</div>
+</div>
+
+<div class="section">
+<h2>Задачи</h2>
+<div id="tasks"></div>
+</div>
+
+<div class="section">
+<h2>Аналитика</h2>
+<canvas id="chart"></canvas>
+</div>
+
+<script>
+
+// === ДАННЫЕ (результат системы) ===
+const tasks = [
+{title:"Чек не отправляется", priority:"HIGH", owner:"Backend", deadline:"Today"},
+{title:"Кейсы на лендинг", priority:"MEDIUM", owner:"Frontend", deadline:"15 May"},
+{title:"Онбординг", priority:"MEDIUM", owner:"Product", deadline:"This week"},
+{title:"Safari баг", priority:"HIGH", owner:"Frontend", deadline:"ASAP"},
+{title:"NPS", priority:"LOW", owner:"Backend", deadline:"Next sprint"},
+{title:"CSV экспорт", priority:"HIGH", owner:"Backend", deadline:"Friday"},
+{title:"Weekly template", priority:"MEDIUM", owner:"Operations", deadline:"Next week"},
+{title:"Оферта", priority:"HIGH", owner:"Legal", deadline:"Before release"}
+];
+
+// === РЕНДЕР ЗАДАЧ ===
+const container = document.getElementById("tasks");
+
+tasks.forEach(t => {
+  const div = document.createElement("div");
+  div.className = "card";
+  div.innerHTML = `
+  <b>${t.title}</b><br>
+  Priority: ${t.priority}<br>
+  Owner: ${t.owner}<br>
+  Deadline: ${t.deadline}
+  `;
+  container.appendChild(div);
+});
+
+// === CHART ===
+let chart;
+
+function groupBy(field) {
+  const result = {};
+  tasks.forEach(t => {
+    const key = t[field];
+    result[key] = (result[key] || 0) + 1;
+  });
+  return result;
+}
+
+function updateChart(field) {
+
+  const data = groupBy(field);
+  const labels = Object.keys(data);
+  const values = Object.values(data);
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(document.getElementById("chart"), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Количество задач",
+        data: values
+      }]
+    }
+  });
+}
+
+// === INIT ===
+updateChart('priority');
+
+</script>
+
+</body>
+</html>
