@@ -21,10 +21,6 @@ body { font-family: Arial; margin: 20px; }
   min-height: 300px;
 }
 
-.column h3 {
-  text-align: center;
-}
-
 .task {
   background: white;
   padding: 10px;
@@ -32,37 +28,33 @@ body { font-family: Arial; margin: 20px; }
   border-radius: 6px;
   cursor: grab;
   border-left: 5px solid gray;
+  font-size: 14px;
 }
 
 .high { border-left-color: red; }
 .medium { border-left-color: orange; }
 .low { border-left-color: green; }
 
+.section { margin-top: 40px; }
 .controls button {
   margin-right:10px;
   padding:8px 12px;
   cursor:pointer;
-}
-
-.section {
-  margin-top: 40px;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Inbox → Decision Dashboard</h1>
+<h1>Decision System with Risk Scoring</h1>
 
 <div class="board">
   <div class="column" id="backlog" ondrop="drop(event)" ondragover="allowDrop(event)">
     <h3>Backlog</h3>
   </div>
-
   <div class="column" id="inprogress" ondrop="drop(event)" ondragover="allowDrop(event)">
     <h3>In Progress</h3>
   </div>
-
   <div class="column" id="done" ondrop="drop(event)" ondragover="allowDrop(event)">
     <h3>Done</h3>
   </div>
@@ -72,10 +64,11 @@ body { font-family: Arial; margin: 20px; }
 <h2>Analytics</h2>
 
 <div class="controls">
-<button onclick="updateChart('priority')">By Priority</button>
-<button onclick="updateChart('owner')">By Owner</button>
-<button onclick="updateChart('deadline')">By Deadline</button>
-<button onclick="updateChart('status')">By Status</button>
+<button onclick="updateChart('priority')">Priority</button>
+<button onclick="updateChart('owner')">Owner</button>
+<button onclick="updateChart('deadline')">Deadline</button>
+<button onclick="updateChart('status')">Status</button>
+<button onclick="updateChart('riskLevel')">Risk Level</button>
 </div>
 
 <canvas id="chart"></canvas>
@@ -83,50 +76,66 @@ body { font-family: Arial; margin: 20px; }
 
 <script>
 
+// === RISK FUNCTION ===
+function calculateRisk(task) {
+
+  let impact = task.impact;
+  let urgency = task.urgency;
+  let uncertainty = task.uncertainty;
+
+  return impact * urgency * uncertainty;
+}
+
+function getRiskLevel(score) {
+  if (score >= 80) return "HIGH";
+  if (score >= 40) return "MEDIUM";
+  return "LOW";
+}
+
 // === DATA ===
 const tasks = [
-{id:1, title:"Fix payment receipt", priority:"HIGH", owner:"Backend", deadline:"Today", status:"backlog"},
-{id:2, title:"Landing cases", priority:"MEDIUM", owner:"Frontend", deadline:"May 15", status:"backlog"},
-{id:3, title:"Onboarding guide", priority:"MEDIUM", owner:"Product", deadline:"This week", status:"inprogress"},
-{id:4, title:"Safari bug", priority:"HIGH", owner:"Frontend", deadline:"ASAP", status:"backlog"},
-{id:5, title:"NPS", priority:"LOW", owner:"Backend", deadline:"Next sprint", status:"backlog"},
-{id:6, title:"CSV export", priority:"HIGH", owner:"Backend", deadline:"Friday", status:"inprogress"},
-{id:7, title:"Weekly template", priority:"MEDIUM", owner:"Operations", deadline:"Next week", status:"done"},
-{id:8, title:"Legal offer", priority:"HIGH", owner:"Legal", deadline:"Before release", status:"backlog"}
+{id:1, title:"Fix payment receipt", priority:"HIGH", owner:"Backend", deadline:"Today", status:"backlog", impact:5, urgency:5, uncertainty:3},
+{id:2, title:"Landing cases", priority:"MEDIUM", owner:"Frontend", deadline:"May 15", status:"backlog", impact:3, urgency:4, uncertainty:2},
+{id:3, title:"Onboarding guide", priority:"MEDIUM", owner:"Product", deadline:"This week", status:"inprogress", impact:3, urgency:3, uncertainty:3},
+{id:4, title:"Safari bug", priority:"HIGH", owner:"Frontend", deadline:"ASAP", status:"backlog", impact:4, urgency:5, uncertainty:2},
+{id:5, title:"NPS", priority:"LOW", owner:"Backend", deadline:"Next sprint", status:"backlog", impact:2, urgency:2, uncertainty:3},
+{id:6, title:"CSV export", priority:"HIGH", owner:"Backend", deadline:"Friday", status:"inprogress", impact:5, urgency:4, uncertainty:3},
+{id:7, title:"Weekly template", priority:"MEDIUM", owner:"Operations", deadline:"Next week", status:"done", impact:3, urgency:2, uncertainty:2},
+{id:8, title:"Legal offer", priority:"HIGH", owner:"Legal", deadline:"Before release", status:"backlog", impact:5, urgency:4, uncertainty:2}
 ];
+
+// === PRE-CALC RISK ===
+tasks.forEach(t => {
+  t.risk = calculateRisk(t);
+  t.riskLevel = getRiskLevel(t.risk);
+});
 
 // === RENDER ===
 function renderTasks() {
-  document.querySelectorAll(".column").forEach(col => col.innerHTML = `<h3>${col.id === "backlog" ? "Backlog" : col.id === "inprogress" ? "In Progress" : "Done"}</h3>`);
+  document.querySelectorAll(".column").forEach(col => col.innerHTML = `<h3>${col.id}</h3>`);
 
   tasks.forEach(t => {
     const div = document.createElement("div");
     div.className = "task " + t.priority.toLowerCase();
     div.draggable = true;
     div.id = "task-" + t.id;
-
     div.ondragstart = drag;
 
     div.innerHTML = `
       <b>${t.title}</b><br>
       ${t.priority} | ${t.owner}<br>
-      ${t.deadline}
+      ${t.deadline}<br>
+      Risk: ${t.risk} (${t.riskLevel})
     `;
 
     document.getElementById(t.status).appendChild(div);
   });
 }
 
-// === DRAG DROP ===
-function allowDrop(ev) {
-  ev.preventDefault();
-}
-
-function drag(ev) {
-  ev.dataTransfer.setData("text", ev.target.id);
-}
-
-function drop(ev) {
+// === DRAG ===
+function allowDrop(ev){ev.preventDefault();}
+function drag(ev){ev.dataTransfer.setData("text", ev.target.id);}
+function drop(ev){
   ev.preventDefault();
   const data = ev.dataTransfer.getData("text");
   const el = document.getElementById(data);
@@ -146,31 +155,28 @@ function drop(ev) {
 let chart;
 let currentMode = "priority";
 
-function groupBy(field) {
+function groupBy(field){
   const result = {};
-  tasks.forEach(t => {
+  tasks.forEach(t=>{
     const key = t[field];
-    result[key] = (result[key] || 0) + 1;
+    result[key] = (result[key]||0)+1;
   });
   return result;
 }
 
-function updateChart(field) {
+function updateChart(field){
   currentMode = field;
-
   const data = groupBy(field);
-  const labels = Object.keys(data);
-  const values = Object.values(data);
 
-  if (chart) chart.destroy();
+  if(chart) chart.destroy();
 
-  chart = new Chart(document.getElementById("chart"), {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: "Tasks",
-        data: values
+  chart = new Chart(document.getElementById("chart"),{
+    type:'bar',
+    data:{
+      labels:Object.keys(data),
+      datasets:[{
+        label:"Tasks",
+        data:Object.values(data)
       }]
     }
   });
@@ -178,7 +184,7 @@ function updateChart(field) {
 
 // === INIT ===
 renderTasks();
-updateChart("priority");
+updateChart("riskLevel");
 
 </script>
 
