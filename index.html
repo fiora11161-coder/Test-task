@@ -7,12 +7,45 @@
 
 <style>
 body { font-family: Arial; margin: 20px; }
-.section { margin-bottom: 30px; }
-.card { border:1px solid #ddd; padding:10px; margin:10px 0; }
+
+.board {
+  display: flex;
+  gap: 20px;
+}
+
+.column {
+  flex: 1;
+  background: #f4f4f4;
+  padding: 10px;
+  border-radius: 8px;
+  min-height: 300px;
+}
+
+.column h3 {
+  text-align: center;
+}
+
+.task {
+  background: white;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 6px;
+  cursor: grab;
+  border-left: 5px solid gray;
+}
+
+.high { border-left-color: red; }
+.medium { border-left-color: orange; }
+.low { border-left-color: green; }
+
 .controls button {
   margin-right:10px;
   padding:8px 12px;
   cursor:pointer;
+}
+
+.section {
+  margin-top: 40px;
 }
 </style>
 </head>
@@ -21,58 +54,97 @@ body { font-family: Arial; margin: 20px; }
 
 <h1>Inbox → Decision Dashboard</h1>
 
-<p>
-This system transforms unstructured communication into structured, prioritized tasks
-to reduce business risk and improve execution predictability.
-</p>
+<div class="board">
+  <div class="column" id="backlog" ondrop="drop(event)" ondragover="allowDrop(event)">
+    <h3>Backlog</h3>
+  </div>
 
-<div class="section">
-<h2>Analytics View</h2>
-<div class="controls">
-<button onclick="updateChart('priority')">By Priority</button>
-<button onclick="updateChart('owner')">By Owner</button>
-<button onclick="updateChart('deadline')">By Deadline</button>
-</div>
-</div>
+  <div class="column" id="inprogress" ondrop="drop(event)" ondragover="allowDrop(event)">
+    <h3>In Progress</h3>
+  </div>
 
-<div class="section">
-<h2>Tasks</h2>
-<div id="tasks"></div>
+  <div class="column" id="done" ondrop="drop(event)" ondragover="allowDrop(event)">
+    <h3>Done</h3>
+  </div>
 </div>
 
 <div class="section">
 <h2>Analytics</h2>
+
+<div class="controls">
+<button onclick="updateChart('priority')">By Priority</button>
+<button onclick="updateChart('owner')">By Owner</button>
+<button onclick="updateChart('deadline')">By Deadline</button>
+<button onclick="updateChart('status')">By Status</button>
+</div>
+
 <canvas id="chart"></canvas>
 </div>
 
 <script>
 
+// === DATA ===
 const tasks = [
-{title:"Fix payment receipt issue", priority:"HIGH", owner:"Backend", deadline:"Today"},
-{title:"Add cases to landing page", priority:"MEDIUM", owner:"Frontend", deadline:"May 15"},
-{title:"Create onboarding guide", priority:"MEDIUM", owner:"Product", deadline:"This week"},
-{title:"Fix Safari payment bug", priority:"HIGH", owner:"Frontend", deadline:"ASAP"},
-{title:"Implement NPS", priority:"LOW", owner:"Backend", deadline:"Next sprint"},
-{title:"Build CSV export", priority:"HIGH", owner:"Backend", deadline:"Friday"},
-{title:"Create weekly template", priority:"MEDIUM", owner:"Operations", deadline:"Next week"},
-{title:"Update legal offer", priority:"HIGH", owner:"Legal", deadline:"Before release"}
+{id:1, title:"Fix payment receipt", priority:"HIGH", owner:"Backend", deadline:"Today", status:"backlog"},
+{id:2, title:"Landing cases", priority:"MEDIUM", owner:"Frontend", deadline:"May 15", status:"backlog"},
+{id:3, title:"Onboarding guide", priority:"MEDIUM", owner:"Product", deadline:"This week", status:"inprogress"},
+{id:4, title:"Safari bug", priority:"HIGH", owner:"Frontend", deadline:"ASAP", status:"backlog"},
+{id:5, title:"NPS", priority:"LOW", owner:"Backend", deadline:"Next sprint", status:"backlog"},
+{id:6, title:"CSV export", priority:"HIGH", owner:"Backend", deadline:"Friday", status:"inprogress"},
+{id:7, title:"Weekly template", priority:"MEDIUM", owner:"Operations", deadline:"Next week", status:"done"},
+{id:8, title:"Legal offer", priority:"HIGH", owner:"Legal", deadline:"Before release", status:"backlog"}
 ];
 
-const container = document.getElementById("tasks");
+// === RENDER ===
+function renderTasks() {
+  document.querySelectorAll(".column").forEach(col => col.innerHTML = `<h3>${col.id === "backlog" ? "Backlog" : col.id === "inprogress" ? "In Progress" : "Done"}</h3>`);
 
-tasks.forEach(t => {
-  const div = document.createElement("div");
-  div.className = "card";
-  div.innerHTML = `
-  <b>${t.title}</b><br>
-  Priority: ${t.priority}<br>
-  Owner: ${t.owner}<br>
-  Deadline: ${t.deadline}
-  `;
-  container.appendChild(div);
-});
+  tasks.forEach(t => {
+    const div = document.createElement("div");
+    div.className = "task " + t.priority.toLowerCase();
+    div.draggable = true;
+    div.id = "task-" + t.id;
 
+    div.ondragstart = drag;
+
+    div.innerHTML = `
+      <b>${t.title}</b><br>
+      ${t.priority} | ${t.owner}<br>
+      ${t.deadline}
+    `;
+
+    document.getElementById(t.status).appendChild(div);
+  });
+}
+
+// === DRAG DROP ===
+function allowDrop(ev) {
+  ev.preventDefault();
+}
+
+function drag(ev) {
+  ev.dataTransfer.setData("text", ev.target.id);
+}
+
+function drop(ev) {
+  ev.preventDefault();
+  const data = ev.dataTransfer.getData("text");
+  const el = document.getElementById(data);
+
+  if (ev.target.classList.contains("column")) {
+    ev.target.appendChild(el);
+
+    const id = parseInt(data.split("-")[1]);
+    const task = tasks.find(t => t.id === id);
+    task.status = ev.target.id;
+
+    updateChart(currentMode);
+  }
+}
+
+// === CHART ===
 let chart;
+let currentMode = "priority";
 
 function groupBy(field) {
   const result = {};
@@ -84,6 +156,7 @@ function groupBy(field) {
 }
 
 function updateChart(field) {
+  currentMode = field;
 
   const data = groupBy(field);
   const labels = Object.keys(data);
@@ -103,7 +176,9 @@ function updateChart(field) {
   });
 }
 
-updateChart('priority');
+// === INIT ===
+renderTasks();
+updateChart("priority");
 
 </script>
 
