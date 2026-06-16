@@ -79,6 +79,7 @@ body { font-family: Arial; margin: 20px; }
 <button onclick="updateChart('deadline')">By Deadline</button>
 <button onclick="updateChart('status')">By Status</button>
 <button onclick="updateChart('burndown')">Burndown</button>
+<button onclick="updateChart('cfd')">CFD</button>
 </div>
 
 <div class="chart-container">
@@ -90,13 +91,13 @@ body { font-family: Arial; margin: 20px; }
 
 // === DATA ===
 const tasks = [
-{id:1, title:"Fix payment receipt", priority:"HIGH", owner:"Backend", deadline:"Today", status:"backlog"},
-{id:2, title:"Landing cases", priority:"MEDIUM", owner:"Frontend", deadline:"May 15", status:"backlog"},
-{id:3, title:"Onboarding guide", priority:"MEDIUM", owner:"Product", deadline:"This week", status:"inprogress"},
-{id:4, title:"Safari bug", priority:"HIGH", owner:"Frontend", deadline:"ASAP", status:"backlog"},
-{id:5, title:"NPS", priority:"LOW", owner:"Backend", deadline:"Next sprint", status:"backlog"},
-{id:6, title:"CSV export", priority:"HIGH", owner:"Backend", deadline:"Friday", status:"inprogress"},
-{id:7, title:"Weekly template", priority:"MEDIUM", owner:"Operations", deadline:"Next week", status:"done"},
+{id:1, title:"Fix payment receipt", priority:"HIGH", owner:"Support", deadline:"Today", status:"backlog"},
+{id:2, title:"Landing cases", priority:"MEDIUM", owner:"Marketing", deadline:"May 15", status:"inprogress"},
+{id:3, title:"Onboarding guide", priority:"MEDIUM", owner:"Product", deadline:"This week", status:"backlog"},
+{id:4, title:"Safari bug", priority:"HIGH", owner:"Mobile", deadline:"ASAP", status:"backlog"},
+{id:5, title:"NPS", priority:"LOW", owner:"Sales", deadline:"Next sprint", status:"backlog"},
+{id:6, title:"CSV export", priority:"HIGH", owner:"Pilot", deadline:"Friday", status:"backlog"},
+{id:7, title:"Weekly template", priority:"MEDIUM", owner:"Operations", deadline:"Next week", status:"backlog"},
 {id:8, title:"Legal offer", priority:"HIGH", owner:"Legal", deadline:"Before release", status:"backlog"}
 ];
 
@@ -160,16 +161,32 @@ function groupBy(field) {
   return result;
 }
 
+// === BURNDOWN ===
 function buildBurndown() {
   const total = tasks.length;
   const done = tasks.filter(t => t.status === "done").length;
   const remaining = total - done;
 
-  // имитация прогресса
-  const days = ["Start","Now","Target"];
-  const values = [total, remaining, 0];
+  return {
+    labels: ["Start","Now","Target"],
+    values: [total, remaining, 0]
+  };
+}
 
-  return { labels: days, values: values };
+// === CFD ===
+function buildCFD() {
+  const total = tasks.length;
+
+  const backlog_now = tasks.filter(t => t.status === "backlog").length;
+  const inprogress_now = tasks.filter(t => t.status === "inprogress").length;
+  const done_now = tasks.filter(t => t.status === "done").length;
+
+  return {
+    labels: ["Day 1","Day 2","Day 3"],
+    backlog: [total, backlog_now, backlog_now],
+    inprogress: [0, inprogress_now, inprogress_now],
+    done: [0, done_now, done_now]
+  };
 }
 
 function updateChart(field) {
@@ -190,32 +207,42 @@ function updateChart(field) {
           tension: 0.3
         }]
       },
+      options: { responsive: true, maintainAspectRatio: false }
+    });
+    return;
+  }
+
+  if (field === "cfd") {
+    const data = buildCFD();
+
+    chart = new Chart(document.getElementById("chart"), {
+      type: 'line',
+      data: {
+        labels: data.labels,
+        datasets: [
+          { label: "Backlog", data: data.backlog, fill: true },
+          { label: "In Progress", data: data.inprogress, fill: true },
+          { label: "Done", data: data.done, fill: true }
+        ]
+      },
       options: {
         responsive: true,
-        maintainAspectRatio: false
+        maintainAspectRatio: false,
+        plugins: { filler: { propagate: true } }
       }
     });
-
     return;
   }
 
   const data = groupBy(field);
-  const labels = Object.keys(data);
-  const values = Object.values(data);
 
   chart = new Chart(document.getElementById("chart"), {
     type: 'bar',
     data: {
-      labels: labels,
-      datasets: [{
-        label: "Tasks",
-        data: values
-      }]
+      labels: Object.keys(data),
+      datasets: [{ label: "Tasks", data: Object.values(data) }]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false
-    }
+    options: { responsive: true, maintainAspectRatio: false }
   });
 }
 
